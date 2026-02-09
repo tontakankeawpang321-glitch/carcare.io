@@ -79,6 +79,14 @@
             border-radius: 1rem;
             border: 0;
         }
+
+        /* Heart Animation */
+        .heart-click { animation: heartBeat 0.3s ease-in-out; }
+        @keyframes heartBeat {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body class="min-h-screen flex justify-center items-center p-0 md:p-4 bg-slate-200">
@@ -98,9 +106,16 @@
                             <p class="text-[10px] text-sky-500 font-bold uppercase tracking-widest">ดูแลรถ ครบวงจร ใกล้บ้าน</p>
                         </div>
                     </div>
-                    <button onclick="fetchPosts()" class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-sky-600 transition-colors">
-                        <i data-lucide="refresh-cw" width="18"></i>
-                    </button>
+                    <div class="flex gap-2">
+                        <!-- ปุ่มรายการโปรด -->
+                        <button onclick="showFavorites()" class="w-10 h-10 flex items-center justify-center rounded-full bg-pink-50 text-pink-400 hover:text-pink-600 hover:bg-pink-100 transition-colors shadow-sm">
+                            <i data-lucide="heart" width="18" class="fill-current"></i>
+                        </button>
+                        <!-- ปุ่มรีเฟรช -->
+                        <button onclick="fetchPosts()" class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition-colors shadow-sm">
+                            <i data-lucide="refresh-cw" width="18"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="space-y-3 mb-4">
@@ -168,25 +183,23 @@
             </header>
 
             <form id="create-form" class="flex-1 overflow-y-auto p-6 space-y-8 pb-12">
+                <!-- (Form Content Same as Previous) -->
                 <div class="space-y-4">
                     <label class="text-sm font-bold text-slate-700 flex items-center gap-2">
                         <i data-lucide="image" width="18" class="text-sky-500"></i>
                         รูปหน้าร้าน / ผลงาน (สูงสุด 3 รูป)
                     </label>
                     <div class="grid grid-cols-3 gap-3">
-                        <!-- Slot 0 -->
                         <div class="image-slot" id="slot-0" onclick="triggerFileInput(0)">
                             <i data-lucide="camera" class="text-slate-300 mb-1" width="20"></i>
                             <p class="text-[8px] text-slate-400 font-bold uppercase">รูปที่ 1</p>
                             <input type="file" id="file-0" accept="image/*" class="hidden" onchange="handleFile(event, 0)">
                         </div>
-                        <!-- Slot 1 -->
                         <div class="image-slot" id="slot-1" onclick="triggerFileInput(1)">
                             <i data-lucide="camera" class="text-slate-300 mb-1" width="20"></i>
                             <p class="text-[8px] text-slate-400 font-bold uppercase">รูปที่ 2</p>
                             <input type="file" id="file-1" accept="image/*" class="hidden" onchange="handleFile(event, 1)">
                         </div>
-                        <!-- Slot 2 -->
                         <div class="image-slot" id="slot-2" onclick="triggerFileInput(2)">
                             <i data-lucide="camera" class="text-slate-300 mb-1" width="20"></i>
                             <p class="text-[8px] text-slate-400 font-bold uppercase">รูปที่ 3</p>
@@ -293,8 +306,6 @@
     </div>
 
     <script>
-        // API URL Backend (Google Apps Script)
-        // ใช้ตัวเดิมได้เลยเพราะโครงสร้างข้อมูลเหมือนกัน
         const API_URL = "https://script.google.com/macros/s/AKfycbz-Yxg7rbgY5PiBlBbS8daUUeQ8VrhF6PNkGEwAPByKUbVV2MTUabX5D-0ZmGhnXdy89g/exec";
 
         let state = {
@@ -306,7 +317,6 @@
             isLoading: false
         };
 
-        // หมวดหมู่ Car Care
         const categories = [
             { label: 'ทั้งหมด', icon: 'layout-grid' },
             { label: 'ล้างรถ', icon: 'droplets' }, 
@@ -350,7 +360,6 @@
         
         function getDirectImage(url) {
             if (!url) {
-                // รูป Default Car Care
                 return 'https://images.unsplash.com/photo-1601362840469-51e4d8d58785?w=600&q=80';
             }
             url = url.trim();
@@ -385,7 +394,6 @@
             back: () => router.navigate('home')
         };
 
-        // Lightbox Functions
         function openLightbox(src) {
             const lightbox = document.getElementById('lightbox');
             const img = document.getElementById('lightbox-img');
@@ -453,6 +461,86 @@
             distSelect.disabled = false;
         }
 
+        // ================= FAVORITES LOGIC =================
+
+        function toggleFavorite(e, id) {
+            if(e) e.stopPropagation();
+            let favs = JSON.parse(localStorage.getItem('carcare_favs') || '[]');
+            const idx = favs.indexOf(id);
+            if (idx === -1) {
+                favs.push(id);
+                // Animation for success
+                const btn = e ? e.currentTarget : null;
+                if(btn) {
+                    btn.classList.add('heart-click');
+                    setTimeout(() => btn.classList.remove('heart-click'), 300);
+                }
+                Swal.fire({
+                    toast: true, position: 'top-end', icon: 'success', 
+                    title: 'บันทึกรายการโปรดแล้ว', showConfirmButton: false, timer: 1500
+                });
+            } else {
+                favs.splice(idx, 1);
+            }
+            localStorage.setItem('carcare_favs', JSON.stringify(favs));
+            
+            // Re-render based on current view
+            if (state.currentView === 'home') renderHome();
+            if (state.currentView === 'detail') renderDetail(id);
+        }
+
+        function showFavorites() {
+            const favs = JSON.parse(localStorage.getItem('carcare_favs') || '[]');
+            
+            // Filter loaded posts. Warning: If posts haven't loaded, this might be empty.
+            // In this app, we fetch all posts on load, so it works fine.
+            const favPosts = state.posts.filter(p => favs.includes(p.id));
+
+            if (favPosts.length === 0) {
+                Swal.fire({
+                    title: 'ยังไม่มีรายการโปรด',
+                    text: 'กดปุ่มหัวใจในรายการที่คุณสนใจเพื่อบันทึกไว้ที่นี่',
+                    icon: 'info',
+                    confirmButtonText: 'ตกลง',
+                    confirmButtonColor: '#0284c7'
+                });
+                return;
+            }
+
+            const html = `
+                <div class="flex flex-col gap-3 text-left max-h-[60vh] overflow-y-auto px-1">
+                    ${favPosts.map(p => `
+                        <div onclick="Swal.close(); router.navigate('detail', '${p.id}')" class="flex gap-3 p-2 border border-slate-100 rounded-2xl hover:bg-slate-50 cursor-pointer shadow-sm transition-colors">
+                            <img src="${getDirectImage(p.images[0])}" class="w-20 h-20 object-cover rounded-xl bg-slate-200">
+                            <div class="flex-1 py-1">
+                                <div class="font-bold text-slate-800 text-sm line-clamp-1 mb-1">${p.title}</div>
+                                <div class="text-xs text-slate-400 flex items-center gap-1 mb-2">
+                                    <i data-lucide="map-pin" width="12"></i> ${p.district}, ${p.province}
+                                </div>
+                                <div class="text-sm text-sky-600 font-black">฿${Number(p.wage).toLocaleString()}</div>
+                            </div>
+                            <div class="flex items-center">
+                                <button onclick="toggleFavorite(event, '${p.id}'); Swal.close(); showFavorites();" class="p-2 text-pink-500 hover:bg-pink-50 rounded-full">
+                                    <i data-lucide="trash-2" width="16"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            Swal.fire({
+                title: 'รายการโปรด ❤️',
+                html: html,
+                showCloseButton: true,
+                showConfirmButton: false,
+                customClass: { popup: 'rounded-[2rem]' }
+            });
+            lucide.createIcons(); // Re-init icons inside modal
+        }
+
+        // ================================================
+
         function renderHome() {
             const list = document.getElementById('post-list');
             
@@ -484,6 +572,9 @@
                 return matchesCategory && matchesProv && matchesDist;
             });
 
+            // Local Storage Favorites
+            const favs = JSON.parse(localStorage.getItem('carcare_favs') || '[]');
+
             if(filtered.length === 0) {
                 list.innerHTML = `<div class="flex flex-col items-center justify-center text-slate-300 mt-20">
                     <i data-lucide="car" width="64" class="mb-4 opacity-20"></i>
@@ -498,9 +589,15 @@
                     const wage = Number(p.wage) || 0;
                     const displayImage = getDirectImage(p.images?.[0]);
                     const imageCount = p.images.length;
+                    const isFav = favs.includes(p.id);
 
                     return `
-                    <div onclick="router.navigate('detail', '${p.id}')" class="product-card bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden fade-in cursor-pointer group">
+                    <div onclick="router.navigate('detail', '${p.id}')" class="product-card bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden fade-in cursor-pointer group relative">
+                        <!-- Fav Button on Card -->
+                        <button onclick="toggleFavorite(event, '${p.id}')" class="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full backdrop-blur-md bg-white/30 shadow-sm transition-all active:scale-90 hover:bg-white ${isFav ? 'text-pink-500' : 'text-white'}">
+                            <i data-lucide="heart" class="${isFav ? 'fill-current' : ''}" width="16"></i>
+                        </button>
+
                         <div class="h-48 bg-slate-100 relative overflow-hidden">
                             <img src="${displayImage}" 
                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
@@ -541,6 +638,10 @@
             const validImages = post.images.filter(i => i).map(url => getDirectImage(url));
             const wage = Number(post.wage) || 0;
             const mapQuery = encodeURIComponent(post.district + ' ' + post.province);
+            
+            // Check Fav status
+            const favs = JSON.parse(localStorage.getItem('carcare_favs') || '[]');
+            const isFav = favs.includes(post.id);
 
             let imageLayout = `
                 <div class="flex h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide bg-slate-900">
@@ -568,6 +669,12 @@
                     <button onclick="confirmDelete('${post.id}')" class="absolute top-6 right-6 z-20 bg-white/95 p-3 rounded-2xl shadow-xl text-red-500 transition-transform active:scale-90 hover:bg-red-50">
                         <i data-lucide="trash-2"></i>
                     </button>
+
+                    <!-- ปุ่ม Favorite ในหน้า Detail -->
+                    <button onclick="toggleFavorite(event, '${post.id}')" class="absolute top-6 right-20 z-20 bg-white/95 p-3 rounded-2xl shadow-xl ${isFav ? 'text-pink-500' : 'text-slate-400'} transition-transform active:scale-90 hover:bg-pink-50">
+                        <i data-lucide="heart" class="${isFav ? 'fill-current' : ''}"></i>
+                    </button>
+
                     ${imageLayout}
                 </div>
                 <div class="p-8 space-y-8 -mt-10 bg-white rounded-t-[3rem] relative shadow-2xl">
